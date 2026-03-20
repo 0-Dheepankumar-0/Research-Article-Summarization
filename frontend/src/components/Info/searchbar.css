@@ -1,0 +1,90 @@
+/* Outer wrapper with full width, height and centered content */
+.p-4 {
+    width: 100%;
+    max-width: 100%;
+    background-color: #6a6a6b;
+    color: #f5f5f5;
+    padding: 2rem;
+    box-sizing: border-box;
+  
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  /* Form is centered and constrained */
+  form {
+    width: 100%;
+    max-width: 800px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  /* Input box styling */
+  input[type="text"] {
+    padding: 1rem;
+    font-size: 1.2rem;
+    border: 1px solid #555;
+    background-color: #2b2b3d;
+    color: #fff;
+    border-radius: 8px;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  input[type="text"]::placeholder {
+    color: #aaa;
+  }
+  
+  /* Search button on second line */
+  button {
+    /* align-self: flex-start; */
+    padding: 0.8rem 1.5rem;
+    font-size: 1rem;
+    background-color: #056bd8;
+    display: flex;
+    justify-content: center;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+  
+  button:hover {
+    background-color: #0056b3;
+  }
+  
+  /* Paper list styling */
+  ul {
+    width: 100%;
+    max-width: 800px;
+    margin-top: 2rem;
+    list-style: none;
+    padding: 0;
+  }
+  
+  li {
+    background-color: #2c2c3e;
+    border: 1px solid #444;
+    padding: 1.2rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    box-sizing: border-box;
+  }
+  
+  li h3 {
+    color: #f0f0f0;
+  }
+  
+  li p {
+    color: #ccc;
+  }
+  
+  li a {
+    color: #4da6ff;
+    text-decoration: underline;
+  }
+  

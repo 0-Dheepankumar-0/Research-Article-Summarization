@@ -1,0 +1,40 @@
+/* .info-container{
+    font-size: 50px;
+    color: brown;
+} */
+
+/* WelcomeCard.css */
+
+/* .card-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+} */
+
+/* .card {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+} */
+
+/* .button {
+  margin-top: 20px;
+}
+
+.articles {
+  margin-top: 20px;
+} */
+
+.header-with-icon {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+    justify-content: center;
+  }
+  
+  .header-with-icon h1 {
+    margin: 0;
+    color: #252626;
+  }
+  
