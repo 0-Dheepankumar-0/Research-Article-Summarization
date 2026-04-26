@@ -8,6 +8,7 @@ import path from "path";
 import crypto from "crypto";
 import { pipeline } from "stream/promises";
 import Summaries from "../models/Summaries.js";
+import { authenticateToken } from "../middleware/authMiddleware.js";
 const require = createRequire(import.meta.url);
 const pdfParse = require("pdf-parse");
 
@@ -161,7 +162,7 @@ router.get("/research-list", async (req, res) => {
 //   }
   
   // Step 1: Extract PDF Text and pass to summarizer
-  router.post("/extract-pdf-text", async (req, res) => {
+  router.post("/extract-pdf-text", authenticateToken, async (req, res) => {
     const { pdfUrl } = req.body;
   
     if (!pdfUrl) {
@@ -191,9 +192,10 @@ router.get("/research-list", async (req, res) => {
 
 //   save summaries in DB
 
-router.post('/save-summary', async (req, res) => {
+router.post('/save-summary', authenticateToken, async (req, res) => {
     try {
-      const { userId, pdfUrl, summary } = req.body;
+      const { pdfUrl, summary } = req.body;
+      const userId = getAuthenticatedUserId(req);
   
       if (!userId || !pdfUrl || !summary) {
         return res.status(400).json({ message: 'Missing fields' });
@@ -217,12 +219,14 @@ router.post('/save-summary', async (req, res) => {
   
 //   Get summaries of login user
 
-router.get('/user-summaries/:userId', async (req, res) => {
+const getAuthenticatedUserId = (req) => req.user?.id || null;
+
+const getUserSummaries = async (req, res) => {
     try {
-      const { userId } = req.params;
+      const userId = getAuthenticatedUserId(req);
   
       if (!userId) {
-        return res.status(400).json({ message: 'User ID is required' });
+        return res.status(401).json({ message: 'Unauthorized' });
       }
   
       const summaries = await Summaries.find({ userId }).sort({ createdAt: -1 });
@@ -231,6 +235,8 @@ router.get('/user-summaries/:userId', async (req, res) => {
     } catch (err) {
       res.status(500).json({ message: 'Error fetching summaries', error: err.message });
     }
-  });
+};
+
+router.get('/user-summaries', authenticateToken, getUserSummaries);
 
   export default router;
