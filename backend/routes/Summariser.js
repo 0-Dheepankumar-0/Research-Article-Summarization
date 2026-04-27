@@ -87,9 +87,10 @@ router.get("/research-list", async (req, res) => {
       return summaryCache.get(hash);
     }
   
-    const model = slicedText.length < 3000
-      ? "google/pegasus-xsum"
-      : "pszemraj/led-large-book-summary";
+  const preferredModel = slicedText.length < 3000
+    ? "google/pegasus-xsum"
+    : "pszemraj/led-large-book-summary";
+  const fallbackModel = "facebook/bart-large-cnn";
   
     const prompt = `
   You are a helpful research summarization assistant.
@@ -101,27 +102,64 @@ router.get("/research-list", async (req, res) => {
   ${slicedText}
   """`;
   
+  const hfToken = process.env.HUGGINGFACE_API_KEY?.trim();
+  if (!hfToken) {
+    throw new Error("Server is missing HUGGINGFACE_API_KEY. Add it to backend/.env and restart the server.");
+  }
+  if (hfToken === "hf_your_real_token_here" || !hfToken.startsWith("hf_")) {
+    throw new Error("HUGGINGFACE_API_KEY is invalid. Add a real Hugging Face token in backend/.env and restart the server.");
+  }
+
+  const callModel = async (modelName) => {
+    let response;
     try {
-      const response = await axios.post(
-        `https://api-inference.huggingface.co/models/${model}`,
-        { inputs: prompt },
+      response = await axios.post(
+        `https://router.huggingface.co/hf-inference/models/${modelName}`,
+        {
+          inputs: prompt,
+          options: { wait_for_model: true },
+        },
         {
           headers: {
-            Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+            Authorization: `Bearer ${hfToken}`,
             "Content-Type": "application/json",
           },
+          timeout: 120000,
         }
       );
-  
-      const raw = response.data[0];
-      const summary = raw?.generated_text?.trim() || raw?.summary_text?.trim() || "Summary not generated.";
-  
-      summaryCache.set(hash, summary);
-      return summary;
     } catch (err) {
-      console.error("❌ Hugging Face model error:", err.response?.data || err.message);
-      throw new Error("Failed to generate summary. Model may be busy or unavailable.");
+      const status = err?.response?.status;
+      const apiError = err?.response?.data?.error;
+      throw new Error(`HuggingFace ${modelName} request failed${status ? ` (${status})` : ""}${apiError ? `: ${apiError}` : ""}`);
     }
+
+    const payload = response.data;
+    if (payload?.error) {
+      const eta = payload?.estimated_time ? ` (est. wait ${Math.ceil(payload.estimated_time)}s)` : "";
+      throw new Error(`HuggingFace ${modelName} error: ${payload.error}${eta}`);
+    }
+
+    const raw = Array.isArray(payload) ? payload[0] : payload;
+    return raw?.generated_text?.trim() || raw?.summary_text?.trim() || null;
+  };
+
+  try {
+    const summary = await callModel(preferredModel);
+    if (!summary) throw new Error(`No summary text returned by model ${preferredModel}.`);
+    summaryCache.set(hash, summary);
+    return summary;
+  } catch (firstErr) {
+    console.error("❌ Primary Hugging Face model error:", firstErr.message);
+    try {
+      const fallbackSummary = await callModel(fallbackModel);
+      if (!fallbackSummary) throw new Error(`No summary text returned by fallback model ${fallbackModel}.`);
+      summaryCache.set(hash, fallbackSummary);
+      return fallbackSummary;
+    } catch (secondErr) {
+      console.error("❌ Fallback Hugging Face model error:", secondErr.message);
+      throw new Error(`Failed to generate summary. ${secondErr.message}`);
+    }
+  }
   }
   
   // Hugging Face Pegasus-XSum Summarization
@@ -186,7 +224,7 @@ router.get("/research-list", async (req, res) => {
   
     } catch (error) {
       console.error("PDF Processing Error:", error.response?.data || error.message);
-      res.status(500).json({ error: "Failed to extract and summarize PDF." });
+      res.status(500).json({ error: error?.message || "Failed to extract and summarize PDF." });
     }
   });
 

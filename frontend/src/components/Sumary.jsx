@@ -38,13 +38,33 @@ const Summary = () => {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/summary/extract-pdf-text`, { pdfUrl });
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("Please log in to generate a summary.");
+        return;
+      }
+
+      const res = await axios.post(
+        `${process.env.REACT_APP_API_URL}/api/summary/extract-pdf-text`,
+        { pdfUrl },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
       const rawSummary = res?.data?.summary || "No summary generated.";
       const cleaned = cleanSummaryText(rawSummary);
       setSummary(cleaned);
     } catch (err) {
       console.error("Summary Error:", err);
-      setError("Something went wrong while generating the summary.");
+      if (err?.response?.status === 401) {
+        setError("Session expired or unauthorized. Please log in again.");
+      } else if (err?.response?.data?.error) {
+        setError(err.response.data.error);
+      } else {
+        setError("Something went wrong while generating the summary.");
+      }
     } finally {
       setLoading(false);
     }
@@ -52,12 +72,24 @@ const Summary = () => {
 
   const saveSummaryToDB = async () => {
     try {
-      const userId = JSON.parse(localStorage.getItem("user"))
-      const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/summary/save-summary`, {
-        userId: userId?._id,
-        pdfUrl: secureUrl,
-        summary
-      });
+      const token = localStorage.getItem("token");
+      if (!token) {
+        window.alert("Please log in to save your summary.");
+        return;
+      }
+
+      const res = await axios.post(
+        `${process.env.REACT_APP_API_URL}/api/summary/save-summary`,
+        {
+          pdfUrl: secureUrl,
+          summary
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
       console.log("resp: ", res)
       if (res.status === 201) {
         console.log('✅ Summary saved successfully');
@@ -65,7 +97,13 @@ const Summary = () => {
       }
     } catch (error) {
       console.error('❌ Something Went Wrong:', error.message);
-      window.alert('❌ Generated Summary already saved!')
+      if (error?.response?.status === 401) {
+        window.alert("Session expired or unauthorized. Please log in again.");
+      } else if (error?.response?.status === 409) {
+        window.alert("❌ Generated summary is already saved.");
+      } else {
+        window.alert("❌ Unable to save summary right now. Please try again.");
+      }
     }
   };
 
